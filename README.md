@@ -28,6 +28,14 @@ Magic Mouse（一代/二代）硬件不产生捏合手势，系统层收不到 m
   出巨幅缩放。
 - **瞬时失触不断线**：捏合中触点瞬时丢失有桥接窗口兜底，Mouse 单指瞬间
   失触不会把缩放会话掐断。
+- **手掌防误触（v3.1 重构为「校准式」）**：掌压触点被并进双指对会造成
+  "假捏合乱缩"——现在只按**触点位置**判定：靠掌缘划一条排除带，带内触点
+  不计入捏合判定。带的方向与宽度不靠拍脑袋阈值：设置面板点「**手掌
+  校准…**」，用你的两个自然手势（握持 3 秒 + 前端捏合 3 秒）实测测出，
+  立即生效并保存；设置面板里还有**实时触点预览画布**，掌压触点标红 ✕、
+  排除带画阴影，所见即引擎所滤，捏合失灵缩小带宽或重新校准即可。（旧版
+  的接触尺寸闸已废弃：真机数据证实 MTTouch.size 不可靠——部分触点
+  NaN/乱值、捏合按压时尺寸暴涨与掌缘重叠，可靠判据只剩位置。）
 
 ### ② 全局 ⌘Q 防误触
 
@@ -52,7 +60,9 @@ Magic Mouse（一代/二代）硬件不产生捏合手势，系统层收不到 m
 诚实声明：
 
 - **未经 Apple 公证（notarization）**：首次打开会被 Gatekeeper 拦。见
-  下方安装步骤的解除方式。
+  下方安装步骤的解除方式。App 使用同一枚**自签代码签名证书**（PinchBridge
+  Dev）签名：后续版本升级会**保留已授权状态**（辅助功能/输入监控授权无需
+  重复授予），仅首次安装需要走一次授权向导。
 - **识别判据来自社区逆向**：Magic Mouse 一代/二代的设备家族号判据
   （112/113）来自上游开源项目的社区逆向成果；Magic Mouse 3 等其他版本
   **未验证**。
@@ -82,7 +92,8 @@ Magic Mouse（一代/二代）硬件不产生捏合手势，系统层收不到 m
 3. 回到向导，它**实时检测**两项授权状态；两授权全绿后**自动激活**保护，
    **无需手动重启** App。
 
-之后每次开机 App 随登录自启，菜单栏出现状态图标即在工作。
+运行期间菜单栏出现状态图标即在工作。想让**开机自动运行**：菜单栏图标 →
+勾选「**开机自启**」（与系统设置 → 登录项实时同步，默认不勾选）。
 
 ---
 
@@ -92,34 +103,71 @@ Magic Mouse（一代/二代）硬件不产生捏合手势，系统层收不到 m
 
 点击菜单栏图标：
 
-- **状态区**：显示辅助功能 / 输入监控两项授权是否就绪；密码框等安全输入
-  聚焦期间显示「⌘Q 保护暂停」提示（见已知边界第 1 条）；
-- **设置…**：打开设置面板（下方七参数）；
+- **状态区**（不可点）：捏合引擎状态（armed · 设备名 / 已暂停）、⌘Q 累计
+  拦截次数、Secure Input 当前态（密码框聚焦期间显示「激活（⌘Q 保护暂停）」，
+  见已知边界第 1 条）；
+- **开关行**：捏合缩放 开/关（暂停检测，进程与 ⌘Q 保护不退出）、⌘Q 保护
+  开/关、开机自启（与系统设置 → 登录项实时同步）；
+- **授权引导…**（仅两项授权未齐时显示）：随时唤起授权向导窗；
+- **设置…**（⌘,）：打开设置面板（见下）；
+- **打开日志**：在访达中显示 `~/Library/Logs/PinchBridge.log`；
 - **退出**：结束 PinchBridge。
 
-### 设置面板：七参数
+### 设置面板
 
-所有手感参数集中在设置面板，一一对应检测/滤波链路。**改参数不需要重新
-授权、不需要重装**（授权绑定的是 App 本体，参数只是配置）；保存后 App
-以新参数重启捏合引擎即可生效。
+四组设置，全部**热生效**——改动立即经线程安全配置交换进检测队列，无需
+重启 App、**不需要重新授权、不需要重装**（授权绑定的是 App 本体，参数只
+是配置）；每组带「恢复默认」按钮。
 
-| 参数 | 默认值 | 允许范围 | 含义 | 手感方向 |
+**捏合灵敏度组**（四参）与 **1€ 滤波组**（三参）：
+
+| 参数 | 默认值 | 面板范围 | 含义 | 手感方向 |
 |---|---|---|---|---|
-| `minCutoff` | 0.9 | 0.01 – 20 | 1€ 滤波最低截止频率（Hz），静止时的抑噪底线 | 越小越稳、越迟钝；越大越跟手、越易抖 |
-| `beta` | 6.0 | 0 – 50 | 速度增益：滤波截止随捏合速度抬升的强度，动态跟手 | 越大快捏越跟手；过大动态噪声也放大 |
-| `dCutoff` | 6.0 | 0.05 – 20 | 速度估计自身的低通截止（Hz），速度信号平滑度 | 越大阶跃起压越快；越小越平滑迟缓 |
-| `entryRatio` | 1.018 | 1.0001 – 1.5 | 入场阈值（**张开方向**比值；捏拢方向自动取其倒数 ≈ 0.9823） | 越大越难触发、越防误触；越小越灵敏 |
-| `confirmFrames` | 3 | 1 – 10（整数） | 入场确认：连续 N 帧滤波增量同号才算捏合开始 | 越大越防误触、起步越迟；越小越快 |
-| `bridgeMs` | 100 | 0 – 1000 | 桥接窗口（毫秒）：捏合中触点数 ≠2 的容忍时长，同指回归则续会话；**0 = 禁用桥接**（立即结束） | 越大越能扛瞬时失触；越大误连悬会话的风险也越高 |
-| `maxDeltaPerEvent` | 0.08 | 0.001 – 1 | 单个事件的 ln 增量钳制上限（安全阀，异常帧不会发出巨幅缩放） | 正常链路不应触发；是保护上限不是手感参数 |
+| `entryRatio` | 1.018 | 1.010 – 1.060 | 入场阈值（**张开方向**比值；捏拢方向自动取其倒数 ≈ 0.9823） | 越小越灵敏；越大越防误触 |
+| `confirmFrames` | 3 | 2 – 5 | 入场确认：连续 N 帧滤波增量同号才算捏合开始 | 越大越防误触、起步越迟 |
+| `bridgeMs` | 100 | 60 – 200 ms | 桥接窗口：捏合中触点瞬时丢失的容忍时长 | 越大越能扛瞬时失触 |
+| `maxDeltaPerEvent` | 0.08 | 0.04 – 0.15 | 单个事件的 ln 增量钳制上限（安全阀） | 保护上限，非手感参数 |
+| `minCutoff` | 0.9 | 0.3 – 3.0 Hz | 1€ 滤波最低截止，静止抑噪底线 | 越小越稳（迟钝），越大越跟随 |
+| `beta` | 6.0 | 0.5 – 10.0 | 速度增益，动态跟手强度 | 越大快捏越跟手；过大放大动态噪声 |
+| `dCutoff` | 6.0 | 0.5 – 2.0 Hz | 速度估计自身的低通截止 | 越大越跟随，越小越平滑 |
 
-⚠️ 注意 `entryRatio` 的方向：**始终填 > 1 的张开方向值**，捏拢触发阈值是
-程序自动取的倒数。想收紧捏拢触发请把 `entryRatio` 改**大**；填 0.98 这类
-小于 1 的值不会生效（会回落默认）。
+⚠️ `entryRatio` 始终是 > 1 的张开方向值，捏拢阈值是程序自动取的倒数；
+想收紧捏拢触发请把它改**大**。
 
 默认值（beta=6.0 / dCutoff=6.0）由确定性手感契约闸门实测校准：静态噪声
 抑制 ≥4×、真实阶跃 63% 响应 ≤5 帧、慢捏轨迹零反向帧、异常间隙零误发。
-出厂默认已经是稳/跟手的均衡点，建议只微调单项观察。
+出厂默认已是稳/跟手的均衡点，建议只微调单项观察。
+
+**手掌防误触组**（防掌压被当成捏合；v3.1 校准式）：
+
+- **手掌校准…（推荐先做这一步）**：点按钮进入向导，照大字提示做两个自然
+  手势——第 1 步「像平时一样握住鼠标不动」3 秒采掌区样本，第 2 步「双指
+  在鼠标前端做捏合动作」3 秒采指区样本——随后自动算出**掌区方向**（后缘
+  靠手腕 / 前缘靠指尖）与**排除带边界**，立即生效并保存（结果面板显示
+  方向 / 边界位置 / 带宽 / 两阶段样本帧数）。校准期间捏合检测暂停，校准
+  手势不会误发缩放；某阶段样本不足（< 30 帧）会报「样本不足，请重试」
+  ——手指贴住鼠标表面、别悬空即可；
+- **排除带宽度滑杆**：0.15 – 0.45（占鼠标表面高度比例，从掌缘端起量）。
+  校准后为实测值，也可手动微调：太小会漏掌，太大会吞捏合；
+- **开关**：手掌防误触 开/关——关 = 不过滤任何触点（没有掌压误触问题时
+  开销最小）；
+- **实时触点预览画布**：触点实时映射到鼠标表面矩形，被排除带滤掉的触点
+  标红 ✕、排除带画阴影、方向实时标注——**预览 = 引擎实时判定**，亲眼
+  看着自己的掌压触点验证校准效果；
+- **失效排障（重新校准）**：捏合失灵（真手指被吞，带太宽）→ 缩小带宽或
+  「重新校准」；掌压仍乱缩（带没盖住掌区，带太窄或方向不对）→ 加大带宽
+  或「重新校准」；换手、换握姿、换鼠标之后掌区位置变了——重新跑一次
+  校准即可，无需重装或重新授权；
+- 「恢复出厂」= 排除带 30% + 后缘（未校准时的保守默认）；
+- 旧版的四级档位与尺寸闸已移除：MTTouch.size 判死（部分触点 NaN/乱值、
+  捏合按压时尺寸暴涨与掌缘重叠），判据只剩触点位置 y。旧 tuning.json 里
+  残留的 palmSizeGate / palmRatioGate / palmEntryPairCap 字段读入忽略，
+  不影响运行。
+
+底部「打开追踪（PINCH_TRACE）」开关（**默认关闭**）：开启后逐帧把触点
+间距、接触尺寸、触点在鼠标表面上的位置（手掌排除带调参用）与滤波器状态
+写入本机 CSV（仅本机排障用、不上传，隐私说明见
+[PRIVACY.md](PRIVACY.md)），会话结束或空闲时生效。
 
 ---
 
@@ -147,12 +195,18 @@ Magic Mouse（一代/二代）硬件不产生捏合手势，系统层收不到 m
 
 ## 卸载（三步）
 
-1. 菜单栏图标 → **退出** PinchBridge；
+1. 菜单栏图标 → **退出** PinchBridge（若开过「开机自启」，先在菜单栏
+   关掉，或到 系统设置 → 登录项与扩展 移除 PinchBridge）；
 2. 「应用程序」里把 **PinchBridge** 拖到废纸篓；
 3. 系统设置 → 隐私与安全性 → **辅助功能** 和 **输入监控** 两个列表里，
    分别把 PinchBridge 条目**手动移除**（卸载不会自动清掉授权记录）。
 
-可选清理：用户资源库（`~/Library`）下 PinchBridge 的配置与日志目录。
+可选清理（配置与日志的实际位置，确认不再使用后可整目录删除）：
+
+- 配置：`~/Library/Application Support/PinchBridge/tuning.json`（更早版本在
+  `~/Library/Application Support/pinch-bridge/`）；
+- 日志：`~/Library/Logs/PinchBridge.log`；诊断追踪开启期间生成的逐帧 CSV
+  也在 `~/Library/Logs/` 下。
 
 ---
 
@@ -185,8 +239,11 @@ Magic Mouse（一代/二代）硬件不产生捏合手势，系统层收不到 m
    can't produce a pinch gesture, so apps like Preview / Safari never see
    one. PinchBridge reads two-finger contacts at the multitouch layer and
    synthesizes native magnification gesture events, with 1€-filter
-   smoothing (no staircase jumps), swipe disambiguation, and a bridging
-   window against momentary touch loss.
+   smoothing (no staircase jumps), swipe disambiguation, a bridging
+   window against momentary touch loss, and a **palm-rejection layer**
+   (a 2-gesture calibration wizard that measures your palm zone, a width
+   slider, and a live touch preview that shows exactly what the engine
+   filters) so a resting palm never fakes a pinch.
 2. **Global ⌘Q guard.** It swallows plain ⌘Q key presses system-wide so
    you don't accidentally quit an app mid-edit. Every other shortcut
    (⌘S, ⌘W, ⌘⇧Q, …) passes through untouched.
@@ -201,9 +258,11 @@ wizard deep-links you to the Accessibility and Input Monitoring panes;
 once both permissions turn green, protection activates automatically —
 no restart needed.
 
-**Tuning:** 7 parameters in the settings panel (1€ filter cutoffs, entry
-threshold, confirm frames, bridge window, per-event clamp). Changing
-them never invalidates your permissions.
+**Tuning:** the settings panel edits everything live (no restart, never
+invalidates your permissions): pinch sensitivity + 1€ filter parameters,
+a calibratable palm-rejection zone (2-gesture wizard + width slider +
+live preview), pinch / ⌘Q guard / launch-at-login toggles in the menu
+bar, and an optional off-by-default frame trace (local CSV only).
 
 **Honest limits:** during password fields (Secure Input) the ⌘Q guard is
 paused — an Apple OS-level restriction; symmetric spread/squeeze while
