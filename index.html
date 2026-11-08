@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="PinchBridge —— 把 Magic Mouse 双指捏合变成 macOS 原生无级缩放，附带全局 ⌘Q 防误退。免费、无遥测、全本地。">
+<meta name="theme-color" content="#0A0C10">
+<meta name="color-scheme" content="dark">
+<title>PinchBridge — 把 Magic Mouse 双指捏合变成 macOS 原生无级缩放</title>
+<style>
+/* =====================================================================
+   PinchBridge 官方介绍页 · 单文件零外部依赖
+   字体：系统栈；图形：内联 SVG + CSS；动效：仅 transform/opacity（合成层）
+   ===================================================================== */
+
+/* ---------- 主题变量 ---------- */
+:root {
+  --bg: #0A0C10;            /* 页面底色 */
+  --amber: #E8A03D;         /* 主色：呼应 App 图标琥珀 */
+  --amber-soft: #F5C57B;    /* 主色浅调 */
+  --text: #E8EBF2;          /* 正文 */
+  --muted: #98A2B3;         /* 次要文字 */
+  --card: rgba(255,255,255,.05);   /* 玻璃卡片底 */
+  --line: rgba(255,255,255,.09);   /* 描边 */
+  --travel: 42px;           /* 指尖汇聚位移（小屏收窄，见媒体查询） */
+  --cycle: 4.8s;            /* 演示动画整循环时长，各元素共用保证同步 */
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background:
+    radial-gradient(1100px 560px at 72% -12%, rgba(232,160,61,.07), transparent 60%),
+    radial-gradient(900px 480px at 8% 8%, rgba(120,140,190,.05), transparent 55%),
+    var(--bg);
+  color: var(--text);
+  font: 16px/1.75 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: rgba(232,160,61,.32); }
+
+a { color: var(--amber-soft); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: .88em;
+  background: rgba(255,255,255,.07);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+/* ---------- 顶栏 ---------- */
+.top {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(10,12,16,.72);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.top .wrap { display: flex; justify-content: space-between; align-items: center; height: 56px; }
+.brand { display: flex; align-items: center; gap: 9px; font-weight: 650; letter-spacing: .2px; }
+.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--amber-soft), var(--amber)); box-shadow: 0 0 10px rgba(232,160,61,.55); }
+
+/* ---------- Hero ---------- */
+.hero { text-align: center; padding: 84px 0 30px; }
+.ver {
+  display: inline-block; font-size: 13px; letter-spacing: 1px;
+  color: var(--amber); border: 1px solid rgba(232,160,61,.45);
+  background: rgba(232,160,61,.08);
+  border-radius: 999px; padding: 3px 14px; margin-bottom: 22px;
+}
+.hero h1 { font-size: clamp(38px, 7vw, 58px); font-weight: 750; letter-spacing: .5px; line-height: 1.15; }
+.tagline { margin-top: 16px; font-size: clamp(17px, 2.6vw, 21px); color: var(--text); }
+.tagline b { color: var(--amber-soft); font-weight: 650; }
+.sub { margin-top: 10px; font-size: 14.5px; color: var(--muted); }
+
+.cta { margin-top: 34px; }
+.btn {
+  display: inline-block; padding: 13px 34px; border-radius: 999px;
+  background: linear-gradient(180deg, #F0B25A, #DE9430);
+  color: #1A1206; font-weight: 650; font-size: 16px;
+  box-shadow: 0 10px 28px rgba(232,160,61,.22);
+  transition: transform .15s ease;               /* 仅 transform，保 60fps */
+}
+.btn:hover { text-decoration: none; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+/* ---------- 演示区（纯 CSS 动画） ---------- */
+.stage-wrap { margin: 26px 0 0; }
+.stage {
+  display: flex; align-items: center; justify-content: center;
+  gap: clamp(30px, 9vw, 88px);
+  padding: 44px 0 10px;
+}
+
+/* Magic Mouse 顶视：胶囊体 + 弧顶高光 */
+.mouse {
+  position: relative; flex: none;
+  width: 132px; height: 212px; border-radius: 66px;
+  background: linear-gradient(180deg, #3C414D 0%, #262B36 55%, #1B1F28 100%);
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow: 0 26px 52px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.16);
+}
+/* 弧顶高光：顶部椭圆光斑 */
+.mouse::before {
+  content: ""; position: absolute; top: 9px; left: 17%; right: 17%; height: 32%;
+  border-radius: 50% 50% 46% 46% / 62% 62% 38% 38%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.34), rgba(255,255,255,0) 72%);
+  pointer-events: none;
+}
+/* 捏合按压时鼠标内部的琥珀透光 */
+.mouse .glow {
+  position: absolute; inset: 13% 11%; border-radius: 999px;
+  background: radial-gradient(ellipse at 50% 62%, rgba(232,160,61,.6), transparent 70%);
+  opacity: 0; will-change: opacity;
+  animation: press var(--cycle) cubic-bezier(.4,0,.2,1) infinite;
+}
+/* 指尖光点（两枚，从两侧向中心汇聚） */
+.tip {
+  position: absolute; top: 62%; left: 50%;
+  width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #FFFFFF, #FFD9A0 42%, rgba(232,160,61,.9) 72%, rgba(232,160,61,.35));
+  box-shadow: 0 0 18px 6px rgba(232,160,61,.35);
+  opacity: 0; will-change: transform, opacity;
+}
+.tip-l { animation: tip-l var(--cycle) cubic-bezier(.4,0,.2,1) infinite; }
+.tip-r { animation: tip-r var(--cycle) cubic-bezier(.4,0,.2,1) infinite; }
+/* 涟漪：捏合触发后从汇聚点扩散（两道，错峰） */
+.ripple {
+  position: absolute; top: 62%; left: 50%;
+  width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
+  border: 2px solid rgba(232,160,61,.85);
+  opacity: 0; will-change: transform, opacity;
+}
+.ripple-a { animation: ripple var(--cycle) cubic-bezier(.25,.6,.3,1) infinite; }
+.ripple-b { animation: ripple var(--cycle) cubic-bezier(.25,.6,.3,1) infinite; animation-delay: .16s; }
+
+/* 旁侧文档卡：随捏合放大 ↔ 缩小，演示无级缩放 */
+.doc {
+  position: relative; flex: none;
+  width: 152px; height: 198px; border-radius: 14px;
+  background: linear-gradient(180deg, #2B303B, #1E222C);
+  border: 1px solid var(--line);
+  box-shadow: 0 22px 44px rgba(0,0,0,.45);
+  will-change: transform;
+  animation: zoom-doc var(--cycle) cubic-bezier(.4,0,.2,1) infinite;
+}
+.doc-title {
+  position: absolute; top: 16px; left: 16px; width: 62%; height: 12px;
+  border-radius: 6px; background: rgba(232,160,61,.8);
+}
+.doc-lines {
+  position: absolute; top: 52px; left: 16px; right: 16px; bottom: 16px;
+  border-radius: 4px;
+  background: repeating-linear-gradient(180deg, rgba(255,255,255,.17) 0 3px, transparent 3px 15px);
+}
+
+.stage-wrap figcaption {
+  text-align: center; color: var(--muted); font-size: 14px;
+  letter-spacing: 2px; padding: 14px 0 0;
+}
+
+/* 动画关键帧：全为 transform / opacity（合成器直走，不触发重排重绘） */
+@keyframes tip-l {
+  0%   { transform: translateX(calc(-1 * var(--travel))); opacity: 0; }
+  10%  { opacity: 1; }
+  28%  { transform: translateX(-5px); }        /* 汇聚到位 */
+  56%  { transform: translateX(-4px); opacity: 1; }
+  68%  { opacity: 0; }                          /* 抬指淡出 */
+  100% { transform: translateX(calc(-1 * var(--travel))); opacity: 0; }
+}
+@keyframes tip-r {
+  0%   { transform: translateX(var(--travel)); opacity: 0; }
+  10%  { opacity: 1; }
+  28%  { transform: translateX(5px); }
+  56%  { transform: translateX(4px); opacity: 1; }
+  68%  { opacity: 0; }
+  100% { transform: translateX(var(--travel)); opacity: 0; }
+}
+@keyframes press {
+  0%, 20%  { opacity: 0; }
+  30%, 56% { opacity: .38; }
+  68%, 100% { opacity: 0; }
+}
+@keyframes ripple {
+  0%, 27% { transform: scale(.15); opacity: 0; }
+  30%     { opacity: .6; }
+  62%     { transform: scale(2.7); opacity: 0; }
+  100%    { transform: scale(2.7); opacity: 0; }
+}
+@keyframes zoom-doc {
+  0%, 26%  { transform: scale(1); }
+  50%      { transform: scale(1.26); }          /* 放大 */
+  62%      { transform: scale(1.26); }          /* 保持 */
+  90%, 100% { transform: scale(1); }            /* 缩回，循环 */
+}
+
+/* 无障碍：偏好减弱动效时展示静态定格（指尖并拢、文档放大态） */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .tip, .tip-l, .tip-r, .ripple, .glow, .doc { animation: none; }
+  .tip-l { transform: translateX(-5px); opacity: 1; }
+  .tip-r { transform: translateX(5px); opacity: 1; }
+  .glow  { opacity: .3; }
+  .ripple { display: none; }
+  .doc   { transform: scale(1.22); }
+  .btn:hover { transform: none; }
+}
+/* 标签页不可见时暂停动画（JS 给 <html> 挂 .page-hidden），省电 */
+.page-hidden .tip, .page-hidden .ripple, .page-hidden .glow, .page-hidden .doc { animation-play-state: paused; }
+
+/* ---------- 通用区块 ---------- */
+section.block { padding: 62px 0 6px; }
+.block > h2 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+.block > h2::after { content: ""; display: block; width: 34px; height: 3px; border-radius: 2px; background: var(--amber); margin-top: 10px; }
+.block > .lead { color: var(--muted); font-size: 15px; margin-bottom: 26px; }
+
+/* 特性四卡 */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 16px; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 22px 20px;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  transition: transform .18s ease, border-color .18s ease;
+}
+.card:hover { transform: translateY(-3px); border-color: rgba(232,160,61,.4); }
+.card svg { width: 26px; height: 26px; color: var(--amber); margin-bottom: 12px; }
+.card h3 { font-size: 16.5px; font-weight: 650; margin-bottom: 7px; }
+.card p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+/* 安装三步 */
+.steps { list-style: none; counter-reset: step; display: grid; gap: 14px; }
+.steps li {
+  counter-increment: step; position: relative;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 18px 18px 18px 64px; font-size: 15px; color: var(--muted);
+}
+.steps li b { color: var(--text); font-weight: 650; }
+.steps li::before {
+  content: counter(step);
+  position: absolute; left: 18px; top: 18px;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(232,160,61,.14); border: 1px solid rgba(232,160,61,.45);
+  color: var(--amber); font-weight: 700; font-size: 15px;
+}
+.req { margin-top: 18px; font-size: 13.5px; color: var(--muted); }
+.req b { color: var(--text); font-weight: 600; }
+
+/* FAQ */
+.faq { display: grid; gap: 14px; }
+.faq details {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 20px;
+}
+.faq summary { cursor: pointer; font-weight: 650; font-size: 15.5px; list-style: none; position: relative; padding-right: 26px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: "+"; position: absolute; right: 2px; top: 0;
+  color: var(--amber); font-size: 19px; font-weight: 500;
+  transition: transform .18s ease;
+}
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq details p { margin-top: 10px; font-size: 14.5px; color: var(--muted); line-height: 1.8; }
+
+/* ---------- 页脚 ---------- */
+footer { margin-top: 76px; border-top: 1px solid var(--line); padding: 30px 0 44px; }
+footer .src { text-align: center; font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+footer .legal { text-align: center; font-size: 13.5px; color: var(--muted); }
+footer .legal .sep { margin: 0 8px; color: rgba(255,255,255,.18); }
+
+/* ---------- 响应式（移动端单列） ---------- */
+@media (max-width: 560px) {
+  :root { --travel: 30px; }                 /* 指尖位移随鼠体缩小 */
+  .hero { padding-top: 64px; }
+  .mouse { width: 104px; height: 168px; border-radius: 52px; }
+  .tip { width: 24px; height: 24px; margin: -12px 0 0 -12px; }
+  .ripple { width: 46px; height: 46px; margin: -23px 0 0 -23px; }
+  .doc { width: 122px; height: 160px; }
+  .doc-lines { top: 44px; }
+  .cards { grid-template-columns: 1fr; }    /* 特性卡改单列 */
+  .steps li { padding-left: 58px; }
+}
+/* ≤640px：长命令/路径 code 允许折行，防横向溢出（实测 xattr 命令整块约 500px，
+   在 561–631px 宽仍会把安装步骤撑出视口；桌面宽度保持整块不折行） */
+@media (max-width: 640px) {
+  code { white-space: normal; overflow-wrap: anywhere; }
+}
+</style>
+</head>
+<body>
+
+<!-- 顶栏：品牌 + 仓库入口 -->
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>PinchBridge</div>
+    <nav><a href="https://github.com/Vynje/PinchBridge">GitHub ↗</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- Hero：标题 + 一句话 + 版本徽章 + 下载 -->
+  <section class="hero">
+    <span class="ver">v3.0.0</span><!-- 发版时随 release-notes 同步手改 -->
+    <h1>PinchBridge</h1>
+    <p class="tagline">把 Magic Mouse <b>双指捏合</b>变成 macOS <b>原生无级缩放</b></p>
+    <p class="sub">双指触面读取 · 手势事件合成 · 全局 ⌘Q 防误退 · 零联网 · 零遥测</p>
+    <p class="cta">
+      <a class="btn" href="https://github.com/Vynje/PinchBridge/releases/latest">下载最新版（DMG）</a>
+    </p>
+  </section>
+
+  <!-- 核心演示：捏合 → 涟漪 → 文档无级缩放（纯 CSS，尊重减弱动效） -->
+  <figure class="stage-wrap">
+    <div class="stage" role="img"
+         aria-label="演示动画：两枚指尖光点在 Magic Mouse 表面向中心汇聚，触发涟漪扩散，旁侧文档卡片随之放大与缩小，呈现无级缩放效果">
+      <div class="mouse">
+        <span class="glow" aria-hidden="true"></span>
+        <span class="tip tip-l" aria-hidden="true"></span>
+        <span class="tip tip-r" aria-hidden="true"></span>
+        <span class="ripple ripple-a" aria-hidden="true"></span>
+        <span class="ripple ripple-b" aria-hidden="true"></span>
+      </div>
+      <div class="doc" aria-hidden="true">
+        <span class="doc-title"></span>
+        <span class="doc-lines"></span>
+      </div>
+    </div>
+    <figcaption>双指捏合 · 无级缩放</figcaption>
+  </figure>
+
+  <!-- 特性四卡 -->
+  <section class="block" id="features">
+    <h2>特性</h2>
+    <p class="lead">一个菜单栏小工具，两件认真做的小事。</p>
+    <div class="cards">
+      <article class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="6.2"/><path d="M15.6 15.6L20.2 20.2"/><path d="M8.4 11h5.2M11 8.4v5.2"/>
+        </svg>
+        <h3>无级缩放</h3>
+        <p>双指捏合被翻译成原生缩放手势事件，One Euro 滤波丝滑无台阶；Preview、Safari、照片等应用直接可用。</p>
+      </article>
+      <article class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <rect x="3.5" y="7" width="17" height="11" rx="3"/><text x="12" y="15.6" text-anchor="middle" font-size="8.6" fill="currentColor" stroke="none" font-family="inherit">⌘Q</text>
+        </svg>
+        <h3>⌘Q 防误退</h3>
+        <p>全局拦截纯 ⌘Q 键击，防止手滑退出未保存的文档；⌘S、⌘W 等其余快捷键全部放行。</p>
+      </article>
+      <article class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 4l8 4-8 4-8-4 8-4z"/><path d="M4 12.5l8 4 8-4"/><path d="M4 16.5l8 4 8-4"/>
+        </svg>
+        <h3>双层手掌防误触</h3>
+        <p>长驻掌缘触点自动剔除 + 校准式排除带：两步自然手势实测你的掌区，实时预览亲眼看到引擎滤掉了什么。</p>
+      </article>
+      <article class="card">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="5" rx="1.8"/><path d="M16.6 6.5h.01"/><path d="M12 12.5v3.5"/><path d="M9.4 14.8a3.4 3.4 0 1 0 5.2 0"/>
+        </svg>
+        <h3>菜单栏常驻 · 开机自启</h3>
+        <p>菜单栏图标实时显示引擎与保护状态，改动即时生效；勾选即与系统登录项同步，开机自动运行。</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- 安装三步 -->
+  <section class="block" id="install">
+    <h2>安装</h2>
+    <p class="lead">三步完成；App 未经 Apple 公证，首次打开按第二步解除即可。</p>
+    <ol class="steps">
+      <li><b>下载 DMG</b> —— 从 <a href="https://github.com/Vynje/PinchBridge/releases/latest">Releases 页</a> 下载 <code>PinchBridge.dmg</code>（附 <code>.sha256</code> 校验文件），打开镜像。</li>
+      <li><b>拖入「应用程序」</b> —— 把 PinchBridge 拖进 Applications；未公证，首次打开右键 App →「打开」，或终端执行 <code>xattr -d com.apple.quarantine /Applications/PinchBridge.app</code>。</li>
+      <li><b>授权向导</b> —— 首次启动的向导一键直达「辅助功能」与「输入监控」面板，添加 PinchBridge；两项授权齐后自动激活，无需重启。同一证书升级保留授权。</li>
+    </ol>
+    <p class="req">系统要求：<b>Apple Silicon</b>（仅 arm64 构建）· <b>macOS 14.0+</b> · Magic Mouse（一代 / 二代）</p>
+  </section>
+
+  <!-- FAQ 三条 -->
+  <section class="block" id="faq">
+    <h2>常见问题</h2>
+    <p class="lead">三条最常被问到的。</p>
+    <div class="faq">
+      <details>
+        <summary>下载的安装包怎么校验？</summary>
+        <p>Releases 页每个 DMG 都附带 <code>.sha256</code> 文件。下载后把它们放在同一目录，终端执行 <code>shasum -a 256 -c PinchBridge.dmg.sha256</code>，输出 <code>OK</code> 即为完整原始安装包。</p>
+      </details>
+      <details>
+        <summary>为什么未经 Apple 公证？</summary>
+        <p>独立开发的免费小工具，暂未加入 Apple 开发者计划做公证分发。首次打开被 Gatekeeper 拦截时，右键 App →「打开」即可放行。App 使用稳定的自签证书签名，后续升级会保留已授予的权限，不需要重复授权。</p>
+      </details>
+      <details>
+        <summary>手势可以自定义吗？</summary>
+        <p>可以（实验性功能）。编辑 <code>~/Library/Application Support/PinchBridge/gesture.json</code>，把自定义手势绑定到动作；默认无任何绑定，不影响原生行为，进阶用户适用。</p>
+      </details>
+    </div>
+  </section>
+
+</main>
+
+<!-- 页脚：版权 / 许可 / 仓库 / 上游致谢 / 官方出处声明 -->
+<footer>
+  <div class="wrap">
+    <p class="src">本页为 PinchBridge 官方介绍页；唯一官方发布渠道为仓库 <a href="https://github.com/Vynje/PinchBridge/releases/latest">Releases 页</a>，免费使用。</p>
+    <p class="legal">
+      © 2026 Vynje<span class="sep">·</span><a href="https://github.com/Vynje/PinchBridge/blob/main/LICENSE.md">License: Freeware</a><span class="sep">·</span><a href="https://github.com/Vynje/PinchBridge">GitHub</a><span class="sep">·</span>上游致谢 <a href="https://github.com/YRDEV1/ishora">ishora</a> / <a href="https://github.com/EnesSU/MagicMouseZoomBridge">MagicMouseZoomBridge</a>（MIT，见 <a href="https://github.com/Vynje/PinchBridge/blob/main/ACKNOWLEDGMENTS.md">ACKNOWLEDGMENTS.md</a>）
+    </p>
+  </div>
+</footer>
+
+<script>
+// 标签页不可见时暂停演示动画（省电），重新可见即恢复。
+// 通过给 <html> 挂 .page-hidden 类，由 CSS 对各动画元素统一暂停。
+document.addEventListener('visibilitychange', function () {
+  document.documentElement.classList.toggle('page-hidden', document.hidden);
+});
+</script>
+</body>
+</html>

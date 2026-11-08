@@ -8,14 +8,13 @@
 
 **免费 · 无广告 · 无遥测 · 全本地**
 
+![License: Freeware](https://img.shields.io/badge/License-Freeware-E8A03D?style=flat-square) ![Platform](https://img.shields.io/badge/Platform-Apple_Silicon-9AA3B2?style=flat-square) ![Requires](https://img.shields.io/badge/Requires-macOS_14%2B-9AA3B2?style=flat-square) ![Telemetry](https://img.shields.io/badge/Telemetry-None-2EA043?style=flat-square)
+
 </div>
 
-> [!WARNING]
-> **反盗卖声明**：本仓库是 PinchBridge **唯一官方发布渠道**。任何网盘、电商、二手平台、装机店渠道的副本均为**非官方盗卖**，不获得任何支持，且可能被植入恶意代码。请认准：`github.com/Vynje/PinchBridge` + Releases 页 `shasum -a 256 -c` 校验通过。
+> 本仓库为 PinchBridge 官方仓库，免费使用；许可与再分发条款见 [LICENSE.md](LICENSE.md)。
 
 ---
-
-# PinchBridge
 
 把 **Magic Mouse 双指捏合** 翻译成 **macOS 原生缩放手势事件**，并顺手提供
 **全局 ⌘Q 防误触** 的菜单栏小工具。
@@ -193,7 +192,7 @@ Magic Mouse（一代/二代）硬件不产生捏合手势，系统层收不到 m
 
 - **开机自启** 开关：与「系统设置 → 通用 → 登录项」实时同步；
 - **打开日志**：在访达中显示 `~/Library/Logs/PinchBridge.log`；
-- **逐帧追踪** 开关（**默认关闭**）：开启后逐帧把触点间距、触点在鼠标
+- **逐帧追踪** 开关（**默认关闭**）：开启后逐帧把触点间距、接触尺寸、触点在鼠标
   表面上的位置与滤波器状态写入本机 CSV（仅本机排障用、不上传，隐私说明
   见 [PRIVACY.md](PRIVACY.md)），空闲时立即生效、捏合会话结束后应用；
 - **高级参数 / 显示文件…**：面板之外的参数（桥接窗口、单事件钳制上限、
@@ -204,7 +203,8 @@ Magic Mouse（一代/二代）硬件不产生捏合手势，系统层收不到 m
 - **恢复默认设置…**：灵敏度、平滑度、手掌防误触回出厂（排除带宽 30%、
   方向 rear、丢弃校准结果）——面板里唯一的破坏性操作，弹确认窗；调参
   文件里面板之外的手改值不受影响；
-- 底部显示 App 版本号。
+- 底部显示 App 版本号，以及「**项目主页与许可证**」链接行：点击由系统默认
+  浏览器打开 `github.com/Vynje/PinchBridge`（App 本身不发起网络连接）。
 
 ---
 
@@ -279,9 +279,9 @@ Magic Mouse（一代/二代）硬件不产生捏合手势，系统层收不到 m
    synthesizes native magnification gesture events, with 1€-filter
    smoothing (no staircase jumps), swipe disambiguation, a bridging
    window against momentary touch loss, and a **palm-rejection layer**
-   (a 2-gesture calibration wizard that measures your palm zone, a width
-   slider, and a live touch preview that shows exactly what the engine
-   filters) so a resting palm never fakes a pinch.
+   (a 2-gesture calibration wizard that measures your palm zone, three
+   strength presets, and a live touch preview that shows exactly what the
+   engine filters) so a resting palm doesn't fake a pinch.
 2. **Global ⌘Q guard.** It swallows plain ⌘Q key presses system-wide so
    you don't accidentally quit an app mid-edit. Every other shortcut
    (⌘S, ⌘W, ⌘⇧Q, …) passes through untouched.
