@@ -1,3 +1,20 @@
+<div align="center">
+
+# PinchBridge
+
+**Magic Mouse 双指捏合 → macOS 原生无级缩放 + 全局 ⌘Q 防误退**
+
+[下载 v3.0.0](https://github.com/Vynje/PinchBridge/releases/latest) · [隐私声明](PRIVACY.md) · [许可证](LICENSE.md)
+
+**免费 · 无广告 · 无遥测 · 全本地**
+
+</div>
+
+> [!WARNING]
+> **反盗卖声明**：本仓库是 PinchBridge **唯一官方发布渠道**。任何网盘、电商、二手平台、装机店渠道的副本均为**非官方盗卖**，不获得任何支持，且可能被植入恶意代码。请认准：`github.com/Vynje/PinchBridge` + Releases 页 `shasum -a 256 -c` 校验通过。
+
+---
+
 # PinchBridge
 
 把 **Magic Mouse 双指捏合** 翻译成 **macOS 原生缩放手势事件**，并顺手提供
