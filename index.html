@@ -223,6 +223,23 @@ section.block { padding: 62px 0 6px; }
 .block > h2::after { content: ""; display: block; width: 34px; height: 3px; border-radius: 2px; background: var(--amber); margin-top: 10px; }
 .block > .lead { color: var(--muted); font-size: 15px; margin-bottom: 26px; }
 
+/* ---------- 演示视频（程序生成动画实录，非实机录屏） ---------- */
+.demo-video {
+  margin: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.demo-video video { display: block; width: 100%; height: auto; }
+.demo-video figcaption {
+  text-align: center; color: var(--muted); font-size: 13.5px;
+  padding: 10px 16px 14px; letter-spacing: .3px;
+  border-top: 1px solid var(--line);
+}
+
 /* 特性四卡 */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 16px; }
 .card {
@@ -337,6 +354,18 @@ footer .legal .sep { margin: 0 8px; color: rgba(255,255,255,.18); }
     </div>
     <figcaption>双指捏合 · 无级缩放</figcaption>
   </figure>
+
+  <!-- 演示视频：程序生成动画（正放+倒放无缝循环，非实机录屏） -->
+  <section class="block" id="demo">
+    <h2>演示动画</h2>
+    <p class="lead">双指捏合 ↔ 张开的无级缩放动态（约 20 秒无缝循环，静音自动播放）。</p>
+    <figure class="demo-video">
+      <video autoplay loop muted playsinline poster="assets/demo-poster.png" aria-label="PinchBridge 演示视频：Magic Mouse 双指捏合驱动无级缩放">
+        <source src="assets/demo.mp4" type="video/mp4">
+      </video>
+      <figcaption>程序生成动画，非实机录屏 · Demo animation, procedurally generated — not a screen recording.</figcaption>
+    </figure>
+  </section>
 
   <!-- 特性四卡 -->
   <section class="block" id="features">

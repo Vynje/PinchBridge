@@ -176,6 +176,10 @@ The full copyright and MIT license texts are in [ACKNOWLEDGMENTS.md](ACKNOWLEDGM
 
 ## TL;DR
 
+[![Demo animation](assets/demo.gif)](assets/demo.mp4)
+
+Demo animation (click to watch the mp4; procedurally generated — not a screen recording)
+
 **PinchBridge** is a small menu bar app for Mac that does two things:
 
 1. **Magic Mouse pinch → native macOS zoom.** The Magic Mouse hardware
