@@ -168,3 +168,5 @@ shasum -a 256 -c PinchBridge.dmg.sha256
 ## 许可证与官方来源
 
 免费使用；版权与再分发条款见 [LICENSE.md](https://github.com/Vynje/PinchBridge/blob/main/LICENSE.md)，官方安装包经本仓库 [Releases 页](https://github.com/Vynje/PinchBridge/releases/latest) 发布。
+
+> 注：内部版本号 3.0.4 曾构建用于装机验证，未对外发布；其全部修复已包含于 3.0.5。
