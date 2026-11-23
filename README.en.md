@@ -6,7 +6,7 @@ English | [中文](README.md)
 
 **Magic Mouse two-finger pinch → native macOS continuous zoom + global ⌘Q mis-quit guard**
 
-[Download v3.0.0](https://github.com/Vynje/PinchBridge/releases/latest) · [Privacy Statement](PRIVACY.md) · [License](LICENSE.md)
+[Download](https://github.com/Vynje/PinchBridge/releases/latest) · [Privacy Statement](PRIVACY.md) · [License](LICENSE.md)
 
 **Free · No ads · No telemetry · Fully local**
 

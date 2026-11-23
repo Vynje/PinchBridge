@@ -6,7 +6,7 @@
 
 **Magic Mouse 双指捏合 → macOS 原生无级缩放 + 全局 ⌘Q 防误退**
 
-[下载 v3.0.0](https://github.com/Vynje/PinchBridge/releases/latest) · [隐私声明](PRIVACY.md) · [许可证](LICENSE.md)
+[下载最新版](https://github.com/Vynje/PinchBridge/releases/latest) · [隐私声明](PRIVACY.md) · [许可证](LICENSE.md)
 
 **免费 · 无广告 · 无遥测 · 全本地**
 
